@@ -1,21 +1,39 @@
-# cpp-engineering-demo
+# cpp_service_framework
 
-A minimal C++ engineering project using CMake on Linux.
+A C++ service framework project built for campus recruitment.
 
-## Features
-- C++17
-- CMake build system
-- Clean project structure
+## Current Status
+
+- Logger module v0 completed
+- Supports log levels and macros
+- Project builds with CMake and runs correctly
+
+## Logger Module (v0)
+
+Features:
+- Singleton logger instance
+- Log levels: DEBUG / INFO / WARN / ERROR
+- Logging macros with file / line / function info
+
+Example:
+```cpp
+LOG_INFO("Server starting");
+LOG_WARN("This is a warning");
+LOG_ERROR("Something went wrong");
 
 ## Build & Run
 ```bash
-mkdir build
-cd build
+mkdir build && cd build
 cmake ..
 make
-./cpp_engineering_demo
+./cpp_service_framework
 
-## Environment
-- Linux
-- GCC / G++
-- CMake
+## Roadmap
+```bash
+ Logger v0: basic logging (finished)
+
+ Logger v1: thread safety and timestamp
+
+ Logger v2: file sink
+
+ Network server integration
