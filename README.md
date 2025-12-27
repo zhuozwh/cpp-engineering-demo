@@ -2,38 +2,47 @@
 
 A C++ service framework project built for campus recruitment.
 
+---
+
 ## Current Status
 
 - Logger module v0 completed
-- Supports log levels and macros
+- Supports log levels and logging macros
 - Project builds with CMake and runs correctly
+
+---
 
 ## Logger Module (v0)
 
-Features:
+### Features
+
 - Singleton logger instance
 - Log levels: DEBUG / INFO / WARN / ERROR
-- Logging macros with file / line / function info
+- Logging macros with file / line / function information
 
-Example:
+### Example
+
 ```cpp
-LOG_INFO("Server starting");
-LOG_WARN("This is a warning");
-LOG_ERROR("Something went wrong");
+#include "logger/logger.h"
 
-## Build & Run
+int main() {
+    LOG_INFO("Server starting");
+    LOG_WARN("This is a warning");
+    LOG_ERROR("Something went wrong");
+    return 0;
+}
+
+### Build & RUN
+
 ```bash
 mkdir build && cd build
 cmake ..
 make
 ./cpp_service_framework
 
-## Roadmap
-```bash
- Logger v0: basic logging (finished)
+### Roadmap
 
- Logger v1: thread safety and timestamp
-
- Logger v2: file sink
-
- Network server integration
+-Logger v0: basic logging (finished)
+-Logger v1: thread safety and timestamp
+-Logger v2: file sink
+-Network server integration
