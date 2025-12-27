@@ -31,6 +31,7 @@ int main() {
     LOG_ERROR("Something went wrong");
     return 0;
 }
+```
 
 ### Build & RUN
 
@@ -39,10 +40,11 @@ mkdir build && cd build
 cmake ..
 make
 ./cpp_service_framework
+```
 
 ### Roadmap
 
--Logger v0: basic logging (finished)
--Logger v1: thread safety and timestamp
--Logger v2: file sink
--Network server integration
+- Logger v0: basic logging (finished)
+- Logger v1: thread safety and timestamp
+- Logger v2: file sink
+- Network server integration
