@@ -42,9 +42,15 @@ make
 ./cpp_service_framework
 ```
 
+## Current Status
+
+- Logger module v1.0 completed
+- Basic logging with log levels and macros
+- Project builds and runs correctly
+
 ### Roadmap
 
-- Logger v0: basic logging (finished)
-- Logger v1: thread safety and timestamp
-- Logger v2: file sink
+- Logger v1.0: basic logging (finished)
+- Logger v1.1: thread safety and timestamp
+- Logger v2.0: file sink
 - Network server integration

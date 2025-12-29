@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <mutex>
 #include "log_level.h"
 
 namespace logger {
@@ -10,7 +11,7 @@ public:
     static Logger& instance();
 
     void set_level(LogLevel level);
-    void set_log_file(const std::string& filename);
+   //  void set_log_file(const std::string& filename); // v2
 
     void log(LogLevel level,
              const char* file,
@@ -26,7 +27,8 @@ private:
     Logger& operator=(const Logger&) = delete;
 
 private:
-    LogLevel level_; 
+    LogLevel level_;
+    std::mutex mutex_; 
 };
 
 } // namespace logger
