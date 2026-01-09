@@ -28,7 +28,7 @@ private:
 
 private:
     LogLevel level_;
-    std::mutex mutex_; 
+    std::mutex mutex_; // v1.1 add 
 };
 
 } // namespace logger
