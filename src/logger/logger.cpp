@@ -3,8 +3,8 @@
 #include <iostream>     // std::cout
 #include <mutex>        // std::mutex, std::lock_guard
 #include <sstream>      // std::ostringstream
-#include<iomanip>
-#include<chrono>
+#include <iomanip>
+#include <chrono>
 
 namespace {
 
@@ -56,6 +56,10 @@ void Logger::set_level(LogLevel level) {
     level_ = level;
 }
 
+void Logger::set_sink(std::shared_ptr<LogSink> sink) {
+    sink_ = std::move(sink);
+}
+
 // v1 阶段不实现文件输出
 // 这个接口是为 v2 预留的
 // void Logger::set_log_file(const std::string& /*filename*/) {
@@ -86,10 +90,16 @@ void Logger::log(LogLevel level,
         << "[" << current_time() << "]"
 	<< file << ":" << line << " "
         << func << " - "
-        << message << std::endl; 
+        << message; 
     
     // v1：输出到标准输出
-    std::cout << oss.str();
+    // std::cout << oss.str();
+    
+    const std::string formatted_message = oss.str();
+
+    if (sink_) {
+        sink_->write(formatted_message);
+    }
 }
 
 } // namespace logger

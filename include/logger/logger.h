@@ -2,7 +2,9 @@
 
 #include <string>
 #include <mutex>
+#include <memory>
 #include "log_level.h"
+#include "log_sink.h"
 
 namespace logger {
 
@@ -11,6 +13,8 @@ public:
     static Logger& instance();
 
     void set_level(LogLevel level);
+
+    void set_sink(std::shared_ptr<LogSink> sink);
    //  void set_log_file(const std::string& filename); // v2
 
     void log(LogLevel level,
@@ -28,7 +32,9 @@ private:
 
 private:
     LogLevel level_;
-    std::mutex mutex_; // v1.1 add 
+    std::mutex mutex_;                      // v1.1: 线程安全
+    std::shared_ptr<LogSink> sink_;          // v1.2: 输出目标
+
 };
 
 } // namespace logger

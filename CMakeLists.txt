@@ -11,6 +11,8 @@ add_executable(cpp_service_framework
     src/logger/log_level.cpp
     src/logger/log_sink.cpp
     src/logger/log_formatter.cpp
+    src/logger/console_sink.cpp
+    src/logger/file_sink.cpp
 )
 
 target_include_directories(cpp_service_framework PRIVATE
