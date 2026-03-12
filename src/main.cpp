@@ -21,7 +21,7 @@ int main() {
     // 3. 正常使用日志宏
     LOG_INFO("Server starting...");
     LOG_WARN("This is a warning");
-    LOG_ERROR("Something went wrong");
+    LOG_ERROR("Something went wrong _test_");
 
     return 0;
 }

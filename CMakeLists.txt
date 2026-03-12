@@ -5,6 +5,9 @@ project(cpp_service_framework LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# 添加这一行：让 CMake 生成 compile_commands.json（clangd 需要）
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 add_executable(cpp_service_framework
     src/main.cpp
     src/logger/logger.cpp
