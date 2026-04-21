@@ -14,7 +14,7 @@ int main() {
         std::make_shared<ConsoleSink>()
     ); */
 
-    Logger::instance().set_sink(
+    Logger::instance().add_sink(
         std::make_shared<FileSink>("app.log")
     );
 
