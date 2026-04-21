@@ -3,8 +3,28 @@
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+#include <string_view>
 
 namespace logger {
+
+namespace {
+
+// 只保留文件名，避免日志里出现很长的绝对路径
+const char* extract_filename(const char* path) {
+    if (path == nullptr) {
+        return "unknown";
+    }
+
+    const char* filename = path;
+    for (const char* p = path; *p != '\0'; ++p) {
+        if (*p == '/' || *p == '\\') {
+            filename = p + 1;
+        }
+    }
+    return filename;
+}
+
+}  // namespace
 
 const char* LogFormatter::level_to_string(LogLevel level) {
     switch (level) {
@@ -47,7 +67,7 @@ std::string LogFormatter::format(const LogMessage& msg) const {
         << "]";
 
     oss << "["
-        << msg.file
+        << extract_filename(msg.file)
         << ":"
         << msg.line
         << "]";

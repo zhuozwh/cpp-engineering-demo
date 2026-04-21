@@ -16,9 +16,12 @@ void worker(int id) {
 int main() {
     logger::Logger::instance().set_level(logger::LogLevel::INFO);
 
+     // 这条 DEBUG 理论上不会输出，用来验证 level 过滤是否生效
+    LOG_DEBUG("this debug log should not appear");
+
     // 在默认控制台输出基础上，再额外挂一个文件输出
     logger::Logger::instance().add_sink(
-        std::make_shared<logger::FileSink>("logs/app0420.log"));
+        std::make_shared<logger::FileSink>("logs/app042101.log"));
 
     std::vector<std::thread> threads;
     for (int i = 0; i < 8; ++i) {
@@ -29,6 +32,6 @@ int main() {
         t.join();
     }
 
-    LOG_WARN("logger v0.3.0 demo finished");
+    LOG_WARN("logger v0.3.1 demo finished");
     return 0;
 }
