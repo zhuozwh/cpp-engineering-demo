@@ -31,20 +31,6 @@ ThreadPool::~ThreadPool() {
     }
 }
 
-void ThreadPool::submit(std::function<void()> task) {
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-
-        if (stop_) {
-            throw std::runtime_error("submit on stopped ThreadPool");
-        }
-
-        tasks_.push(std::move(task));
-    }
-
-    cv_.notify_one();
-}
-
 void ThreadPool::worker_loop() {
     while (true) {
         std::function<void()> task;
