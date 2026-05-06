@@ -8,8 +8,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 生成 compile_commands.json，方便 clangd 做跳转和补全
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+find_package(Threads REQUIRED)
+
 # =========================
-# logger 模块：单独做成一个库
+# 核心库：logger / threadpool / buffer / 后续基础设施模块
 # =========================
 add_library(cpp_service_framework
     src/logger/logger.cpp
@@ -19,6 +21,7 @@ add_library(cpp_service_framework
     src/logger/console_sink.cpp
     src/logger/file_sink.cpp
     src/threadpool/thread_pool.cpp
+    src/buffer/buffer.cpp
 )
 
 target_include_directories(cpp_service_framework
@@ -26,13 +29,14 @@ target_include_directories(cpp_service_framework
         ${PROJECT_SOURCE_DIR}/include
 )
 
-find_package(Threads REQUIRED)
 target_link_libraries(cpp_service_framework
     PUBLIC
         Threads::Threads
 )
 
-# ============examples=============
+# =========================
+# examples
+# =========================
 add_executable(logger_test
     examples/logger_test.cpp
 )
@@ -47,6 +51,15 @@ add_executable(threadpool_demo
 )
 
 target_link_libraries(threadpool_demo
+    PRIVATE
+        cpp_service_framework
+)
+
+add_executable(buffer_demo
+    examples/buffer_demo.cpp
+)
+
+target_link_libraries(buffer_demo
     PRIVATE
         cpp_service_framework
 )
