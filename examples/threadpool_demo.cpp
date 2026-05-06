@@ -5,29 +5,40 @@
 #include <thread>
 #include <vector>
 #include <future>
+#include <mutex>
 
 int main() {
     threadpool::ThreadPool pool(4);
 
+
+    std::mutex cout_mutex;
     std::vector<std::future<int>> results;
 
     for (int i = 0; i < 8; ++i) {
-        results.emplace_back(pool.submit([i]() {
+        results.emplace_back(pool.submit([i, &cout_mutex]() {
+            {
+            std::lock_guard<std::mutex> lock(cout_mutex);
             std::cout << "task " << i
                       << " is running in thread "
                       << std::this_thread::get_id() << std::endl;
+            }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-            
-            std::cout << "task " << i << " finished" << std::endl;
+            {
+                std::lock_guard<std::mutex> lock(cout_mutex);
+                std::cout << "task " << i << " finished" << std::endl;
+            }
 
             return i * i;
         }));
     }
 
     for (auto& result : results) {
-        std::cout << "result = " << result.get() << std::endl;
+        int value = result.get();
+
+        std::lock_guard<std::mutex> lock(cout_mutex);
+        std::cout << "result = " << value << std::endl;
     }
 
     return 0;
