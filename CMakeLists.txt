@@ -22,6 +22,7 @@ add_library(cpp_service_framework
     src/logger/file_sink.cpp
     src/threadpool/thread_pool.cpp
     src/buffer/buffer.cpp
+    src/config/config.cpp
 )
 
 target_include_directories(cpp_service_framework
@@ -60,6 +61,15 @@ add_executable(buffer_demo
 )
 
 target_link_libraries(buffer_demo
+    PRIVATE
+        cpp_service_framework
+)
+
+add_executable(config_demo
+    examples/config_demo.cpp
+)
+
+target_link_libraries(config_demo
     PRIVATE
         cpp_service_framework
 )
