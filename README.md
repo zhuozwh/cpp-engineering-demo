@@ -62,6 +62,7 @@ config/
 
 docs/
   PROJECT_INTERVIEW_GUIDE.md
+  REACTOR_CORE_NOTES.md
 ```
 
 ---
@@ -96,6 +97,12 @@ docs/PROJECT_INTERVIEW_GUIDE.md
 ```
 
 这里会持续记录项目主线、模块原理、常见追问、回答模板和面试复盘。后续每完成一个模块，都应该同步补充对应的“原理 + 代码流程 + 面试问法”。
+
+Reactor Core 的逐文件代码阅读笔记维护在：
+
+```text
+docs/REACTOR_CORE_NOTES.md
+```
 
 ---
 

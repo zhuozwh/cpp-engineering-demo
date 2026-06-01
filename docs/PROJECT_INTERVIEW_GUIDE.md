@@ -439,6 +439,79 @@ Q：EventLoop 和 ThreadPool 什么关系？
 
 A：EventLoop 适合处理 IO 事件，要求不能长时间阻塞。ThreadPool 适合处理耗时任务。常见做法是 EventLoop 读到请求并完成基础解析后，把耗时业务投递到线程池，线程池执行完再把结果交回 EventLoop 写回连接。
 
+### 6.5 Reactor Core 面试怎么说
+
+面试官问“你这个 Reactor 是怎么跑起来的”，不要先背类名，先从 demo 的一次事件说起：
+
+```text
+reactor_demo 创建 timerfd
+    ↓
+创建 EventLoop
+    ↓
+用 timerfd 创建 Channel
+    ↓
+给 Channel 设置 read_callback
+    ↓
+enable_reading 注册读事件
+    ↓
+EventLoop 调用 epoll_wait 等事件
+    ↓
+timerfd 到期后 epoll 返回
+    ↓
+EventLoop 调用 Channel::handle_event
+    ↓
+Channel 执行 read_callback
+    ↓
+读 timerfd，tick 到 3 后退出 loop
+```
+
+可以这样回答：
+
+> 我现在 v0.5 做的是最小 Reactor Core，不是完整 TCP Server。demo 里我用 timerfd 模拟一个会定期变成可读的 fd。程序先创建 EventLoop，再把 timerfd 包成 Channel，并设置读回调。调用 enable_reading 后，Channel 会通过 EventLoop 交给 EpollPoller 注册到 epoll。EventLoop 进入 loop 后阻塞在 epoll_wait，timerfd 到期后 epoll 返回事件，Poller 把事件转成活跃 Channel，EventLoop 调用 handle_event，最后执行我设置的 read_callback。回调里读取 timerfd，累计三次后 disable_all 并 quit，事件循环退出。
+
+如果面试官继续问“那几个类分别有什么用”，按这个顺序说：
+
+```text
+Socket：管理 fd 生命周期和 socket 系统调用
+Channel：保存一个 fd 关心的事件和回调
+EpollPoller：封装 epoll_ctl 和 epoll_wait
+EventLoop：事件循环，拿活跃 Channel 并分发事件
+```
+
+### 6.6 Reactor Core 常见追问应对
+
+Q：为什么 demo 用 timerfd，不直接写 TCP？
+
+A：timerfd 可以稳定地产生可读事件，用来验证 Reactor 的核心链路：注册 fd、等待事件、返回活跃 Channel、执行回调。TCP Server 还需要 Acceptor、TcpConnection 和连接生命周期管理，那是下一阶段 v0.6 的内容。
+
+Q：Channel 拥有 fd 吗？
+
+A：不拥有。Channel 只是 fd 的事件视图，保存 fd、关注事件、就绪事件和回调。fd 的生命周期由外层对象管理，比如 demo 里的 `FdGuard`，后续 TCP 里会由 `Socket` / `TcpConnection` 管理。
+
+Q：`events_` 和 `revents_` 有什么区别？
+
+A：`events_` 是我希望监听的事件，比如读事件或写事件；`revents_` 是 epoll 实际返回的事件。Channel 根据 `revents_` 判断本次到底发生了可读、可写、关闭还是错误。
+
+Q：`enable_reading()` 最后为什么会走到 epoll_ctl？
+
+A：`enable_reading()` 会修改 Channel 的 `events_`，然后调用 `update()`。`update()` 把当前 Channel 交给 EventLoop，EventLoop 再调用 EpollPoller 的 `update_channel()`。Poller 根据 Channel 是否已经在 epoll 中，选择 `EPOLL_CTL_ADD` 或 `EPOLL_CTL_MOD`。
+
+Q：epoll 返回后怎么找到对应的 Channel？
+
+A：注册事件时，EpollPoller 把 `Channel*` 放进 `epoll_event.data.ptr`。`epoll_wait` 返回后，再从 `data.ptr` 取回这个 `Channel*`，设置它的 `revents_`，放进 active_channels。
+
+Q：为什么 EventLoop 要限制线程？
+
+A：当前实现是单线程 Reactor。Channel 的注册、删除和事件分发都在创建 EventLoop 的线程执行，避免并发修改 Poller 和 Channel 状态。后续如果要跨线程调用，需要增加 eventfd 唤醒和任务队列。
+
+Q：当前 v0.5 最大的不足是什么？
+
+A：它只是 Reactor Core 的最小闭环，还没有 TCP 连接管理。缺少 Acceptor、TcpConnection、TcpServer、连接关闭资源回收、跨线程唤醒和测试压测。它能证明 epoll 事件分发链路是通的，但还不能对外提供 TCP 服务。
+
+Q：这部分和后面的 TcpServer 怎么接？
+
+A：下一步会用 `Socket` 创建 listen fd，再用 `Channel` 监听 listen fd 的可读事件。listen fd 可读表示有新连接，Acceptor 调用 accept 拿到连接 fd，再为连接 fd 创建 TcpConnection 和对应 Channel，后续读写事件就由 TcpConnection 处理。
+
 ---
 
 ## 7. 面试官常见项目追问清单
