@@ -8,14 +8,15 @@
 
 ## 当前版本
 
-**v0.4.0 Infra-Pack**
+**v0.5.0 Reactor Core**
 
-当前阶段完成基础设施模块：
+当前阶段完成基础设施模块和最小 Reactor 网络核心：
 
 - Logger：日志模块
 - ThreadPool：固定线程数线程池，支持 `std::future` 返回值
 - Buffer：可读 / 可写缓冲区，为后续网络层准备
 - Config：轻量级 `key=value` 配置读取器
+- Reactor Core：`Socket` / `Channel` / `EpollPoller` / `EventLoop`
 
 ---
 
@@ -40,21 +41,27 @@ include/
   threadpool/
   buffer/
   config/
+  net/
 
 src/
   logger/
   threadpool/
   buffer/
   config/
+  net/
 
 examples/
   logger_test.cpp
   threadpool_demo.cpp
   buffer_demo.cpp
   config_demo.cpp
+  reactor_demo.cpp
 
 config/
   server.conf
+
+docs/
+  PROJECT_INTERVIEW_GUIDE.md
 ```
 
 ---
@@ -75,7 +82,20 @@ cmake --build build
 ./build/threadpool_demo
 ./build/buffer_demo
 ./build/config_demo
+./build/reactor_demo
 ```
+
+---
+
+## 面试复盘与讲解材料
+
+项目面试手册维护在：
+
+```text
+docs/PROJECT_INTERVIEW_GUIDE.md
+```
+
+这里会持续记录项目主线、模块原理、常见追问、回答模板和面试复盘。后续每完成一个模块，都应该同步补充对应的“原理 + 代码流程 + 面试问法”。
 
 ---
 
@@ -218,6 +238,38 @@ if (cfg.load("config/server.conf")) {
 
 ---
 
+### Reactor Core
+
+Reactor Core 是后续 TCP Server / HTTP Server 的事件驱动基础。
+
+当前支持：
+
+- `Socket`：RAII 文件描述符封装，支持非阻塞 TCP socket、bind、listen、accept 和常用 socket option
+- `Channel`：fd 事件抽象，保存关注事件、就绪事件和读写关闭错误回调
+- `EpollPoller`：封装 `epoll_create1` / `epoll_ctl` / `epoll_wait`
+- `EventLoop`：事件循环，负责 poll active channels 并分发回调
+- `reactor_demo`：使用 `timerfd` 验证 epoll 事件注册、触发、回调和退出流程
+
+核心流程：
+
+```text
+Channel::enable_reading()
+    ↓
+EventLoop::update_channel()
+    ↓
+EpollPoller::epoll_ctl(ADD/MOD)
+    ↓
+EventLoop::loop()
+    ↓
+EpollPoller::epoll_wait()
+    ↓
+Channel::handle_event()
+    ↓
+read/write/error/close callback
+```
+
+---
+
 ## 示例输出
 
 ### ThreadPool Demo
@@ -255,6 +307,16 @@ debug = true
 missing.value = default
 ```
 
+### Reactor Demo
+
+```text
+reactor demo started
+reactor tick 1
+reactor tick 2
+reactor tick 3
+reactor demo stopped
+```
+
 ---
 
 ## 版本路线
@@ -267,14 +329,13 @@ missing.value = default
   - ThreadPool
   - Buffer
   - Config
-
-### 计划中
-
 - v0.5.0：Reactor Core
   - Socket
   - Channel
   - EpollPoller
   - EventLoop
+
+### 计划中
 
 - v0.6.0：Tcp Echo Server
   - TcpConnection
@@ -310,11 +371,11 @@ missing.value = default
 
 ## 当前阶段说明
 
-v0.4.0 的目标是完成后续网络层所需的基础设施。
+v0.5.0 的目标是在基础设施模块之上，完成后续 TCP 服务需要的最小事件驱动网络核心。
 
-当前阶段暂不实现复杂网络逻辑，而是先保证基础模块可以独立运行、独立验证、独立讲清楚。
+当前阶段暂不实现完整 TCP 连接管理，而是先保证 socket 封装、fd 事件抽象、epoll poller 和 event loop 可以独立运行、独立验证、独立讲清楚。
 
-后续进入 v0.5.0 后，将开始实现基于 Linux `epoll` 的 Reactor 网络核心。
+后续进入 v0.6.0 后，将在 Reactor Core 之上实现 `TcpConnection`、`TcpServer` 和 Echo demo。
 
 ---
 
@@ -331,6 +392,8 @@ v0.4.0 的目标是完成后续网络层所需的基础设施。
 - `future` / `packaged_task` 使用
 - 网络缓冲区设计
 - 配置文件解析
+- Linux `epoll` 事件驱动模型
+- Reactor 模式拆分：Socket / Channel / Poller / EventLoop
 - 面向后端服务框架的逐步演进能力
 
 ---
@@ -339,12 +402,11 @@ v0.4.0 的目标是完成后续网络层所需的基础设施。
 
 下一阶段目标：
 
-**v0.5.0 Reactor Core**
+**v0.6.0 Tcp Echo Server**
 
 重点实现：
 
-- Socket 封装
-- Channel 事件抽象
-- EpollPoller
-- EventLoop
-- 最小事件循环 demo
+- TcpConnection
+- TcpServer
+- Acceptor
+- Echo demo

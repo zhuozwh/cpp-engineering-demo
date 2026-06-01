@@ -1,3 +1,11 @@
 build/
+.cache/
+logs/
+*.log
+compile_commands.json
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
 *.o
 *.out

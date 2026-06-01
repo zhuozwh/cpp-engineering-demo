@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(cpp_service_framework VERSION 0.4.0 LANGUAGES CXX)
+project(cpp_service_framework VERSION 0.5.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,7 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(Threads REQUIRED)
 
 # =========================
-# 核心库：logger / threadpool / buffer / 后续基础设施模块
+# 核心库：logger / threadpool / buffer / config / net
 # =========================
 add_library(cpp_service_framework
     src/logger/logger.cpp
@@ -23,6 +23,10 @@ add_library(cpp_service_framework
     src/threadpool/thread_pool.cpp
     src/buffer/buffer.cpp
     src/config/config.cpp
+    src/net/socket.cpp
+    src/net/channel.cpp
+    src/net/epoll_poller.cpp
+    src/net/event_loop.cpp
 )
 
 target_include_directories(cpp_service_framework
@@ -34,6 +38,12 @@ target_link_libraries(cpp_service_framework
     PUBLIC
         Threads::Threads
 )
+
+if (MSVC)
+    target_compile_options(cpp_service_framework PRIVATE /W4)
+else()
+    target_compile_options(cpp_service_framework PRIVATE -Wall -Wextra -Wpedantic)
+endif()
 
 # =========================
 # examples
@@ -70,6 +80,15 @@ add_executable(config_demo
 )
 
 target_link_libraries(config_demo
+    PRIVATE
+        cpp_service_framework
+)
+
+add_executable(reactor_demo
+    examples/reactor_demo.cpp
+)
+
+target_link_libraries(reactor_demo
     PRIVATE
         cpp_service_framework
 )
