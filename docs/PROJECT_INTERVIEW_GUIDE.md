@@ -510,13 +510,85 @@ A：它只是 Reactor Core 的最小闭环，还没有 TCP 连接管理。缺少
 
 Q：这部分和后面的 TcpServer 怎么接？
 
-A：下一步会用 `Socket` 创建 listen fd，再用 `Channel` 监听 listen fd 的可读事件。listen fd 可读表示有新连接，Acceptor 调用 accept 拿到连接 fd，再为连接 fd 创建 TcpConnection 和对应 Channel，后续读写事件就由 TcpConnection 处理。
+A：v0.6 已经用 `Socket` 创建 listen fd，再用 `Channel` 监听 listen fd 的可读事件。listen fd 可读表示有新连接，Acceptor 调用 accept 拿到连接 fd，再为连接 fd 创建 TcpConnection 和对应 Channel，后续读写事件就由 TcpConnection 处理。
 
 ---
 
-## 7. 面试官常见项目追问清单
+## 7. Tcp Echo Server：面试怎么说
 
-### 7.1 项目整体
+### 7.1 一次 Echo 请求怎么流转
+
+面试官问“你的服务端收到一个 hello 后发生了什么”，可以这样回答：
+
+> 服务启动时，Acceptor 会创建 listen socket，完成 bind 和 listen，再把 listen fd 的读事件注册到 EventLoop。客户端连接后，listen fd 变为可读，Acceptor 的回调会调用 accept，拿到一个新的连接 fd。TcpServer 为这个连接 fd 创建 TcpConnection，保存到活跃连接表，再把连接 fd 的读事件注册到 epoll。客户端发送 hello 后，连接 fd 变为可读，TcpConnection 循环 read，把读到的字节 append 到 input buffer，然后触发消息回调。Echo demo 的消息回调直接调用 send，把 hello 写回客户端。如果一次 write 没写完，剩余数据放进 output buffer，等待 EPOLLOUT 再继续发送。
+
+流程图：
+
+```text
+listen fd 可读
+  ↓
+Acceptor::handle_read()
+  ↓
+accept() 得到连接 fd
+  ↓
+TcpServer 创建 TcpConnection
+  ↓
+连接 fd 注册 EPOLLIN
+  ↓
+客户端发送数据
+  ↓
+连接 fd 可读
+  ↓
+TcpConnection::handle_read()
+  ↓
+input_buffer_.append()
+  ↓
+message_callback
+  ↓
+send()
+  ↓
+write() 或 output_buffer_
+```
+
+### 7.2 高频追问应对
+
+Q：listen fd 可读和连接 fd 可读有什么区别？
+
+A：listen fd 代表监听入口。它可读表示内核已经完成了新连接，需要调用 accept 取出连接 fd。连接 fd 代表一个具体客户端会话。它可读表示客户端发来了数据，或者客户端关闭了连接，需要调用 read。
+
+Q：为什么 Acceptor 要循环 accept？
+
+A：一次 epoll 事件到来时，内核队列里可能已经积累多个新连接。listen socket 是非阻塞的，所以循环 accept，直到返回 EAGAIN，表示当前待接收连接已经取完。
+
+Q：为什么 TcpConnection 要循环 read？
+
+A：一次可读通知到来时，内核接收缓冲区里可能有多段数据。非阻塞 read 要持续读取，直到 EAGAIN，表示本轮数据已读完。这样可以减少遗漏和重复事件唤醒。
+
+Q：为什么需要 output buffer？
+
+A：非阻塞 write 不保证一次把数据写完。如果内核发送缓冲区暂时满了，剩余数据要先保存到 output buffer，再监听 EPOLLOUT。fd 可写时继续发送。
+
+Q：为什么发完数据后要 disable_writing？
+
+A：socket 大多数时间都可写。如果没有待发送数据还一直监听 EPOLLOUT，epoll 会持续返回可写事件，让 EventLoop 空转。
+
+Q：TcpServer 的 connections_ 是连接池吗？
+
+A：不是。它是活跃连接表，用来保存当前客户端连接和管理生命周期。连接池通常是预先创建或复用一批对外连接，例如数据库、Redis 或 HTTP 客户端连接，用于控制连接数量和减少重复建连开销。
+
+Q：线程池在这个 Echo Server 里用了吗？
+
+A：当前没用。Echo 回调只做原样返回，处理很轻，直接在 EventLoop 线程执行。后续如果业务逻辑耗时，才考虑把业务任务投递到线程池，但 IO 事件注册和连接状态仍然要由 EventLoop 管理。
+
+Q：当前 Tcp Echo Server 有什么不足？
+
+A：这是单线程 Reactor 的学习版。当前没有协议解析、跨线程 wakeup、多 EventLoop、连接超时、正式测试框架和压测。它解决的是 TCP 服务端最小闭环，不是生产级网络库。
+
+---
+
+## 8. 面试官常见项目追问清单
+
+### 8.1 项目整体
 
 Q：你这个项目解决了什么问题？
 
@@ -524,13 +596,13 @@ A：它是一个 C++ 后端服务框架学习项目，目标是自己实现服�
 
 Q：目前完成到什么程度？
 
-A：目前完成了 Logger、ThreadPool、Buffer、Config 和最小 Reactor Core。Reactor Core 已经能用 timerfd 验证 epoll 事件注册和回调分发。下一步是在它上面封装 TcpServer 和 Echo demo。
+A：目前完成了 Logger、ThreadPool、Buffer、Config、Reactor Core 和最小 Tcp Echo Server。Reactor Core 用 timerfd 验证 epoll 事件分发，Tcp Echo Server 已经能监听端口、接受客户端连接、读取数据并原样回写。
 
 Q：你觉得项目里最核心的模块是什么？
 
 A：当前阶段最核心的是 ThreadPool、Buffer 和 Reactor。ThreadPool 体现并发任务调度，Buffer 体现 TCP 字节流处理，Reactor 体现 Linux 服务端高并发 IO 模型。
 
-### 7.2 线程池
+### 8.2 线程池
 
 Q：线程池怎么工作的？
 
@@ -544,7 +616,7 @@ Q：为什么执行任务前要释放锁？
 
 A：任务执行时间不可控，如果持锁执行，会阻塞其它线程提交任务和其它 worker 取任务，导致并发度下降甚至卡住。
 
-### 7.3 Buffer
+### 8.3 Buffer
 
 Q：为什么要有 Buffer？
 
@@ -558,7 +630,7 @@ Q：空间不够怎么办？
 
 A：先看尾部空间加前面已读空间是否够。如果够，就把可读数据移动到开头复用空间；如果还不够，就 resize 扩容。
 
-### 7.4 Reactor
+### 8.4 Reactor
 
 Q：你的 EventLoop 怎么工作？
 
@@ -574,7 +646,7 @@ A：Socket 管 fd 生命周期，Channel 管事件和回调，Poller 管 epoll�
 
 ---
 
-## 8. 以后每写完代码要补充什么
+## 9. 以后每写完代码要补充什么
 
 每完成一个模块，都按这个模板追加：
 
@@ -602,13 +674,14 @@ A：Socket 管 fd 生命周期，Channel 管事件和回调，Poller 管 epoll�
 
 ---
 
-## 9. 每次面试前的 10 分钟复习顺序
+## 10. 每次面试前的 10 分钟复习顺序
 
 1. 先背项目一句话介绍。
 2. 画出项目主线：Logger / Config -> ThreadPool -> Buffer -> Reactor -> TcpServer -> HTTP。
 3. 复述 ThreadPool 的 submit 到 worker 执行流程。
 4. 复述 Buffer 的 reader_index / writer_index 模型。
 5. 复述 Reactor 的 Channel / Poller / EventLoop 分工。
-6. 准备一个“当前不足和下一步计划”的回答。
+6. 复述 listen fd 可读和连接 fd 可读的区别。
+7. 准备一个“当前不足和下一步计划”的回答。
 
 最低目标：面试官问项目时，先撑住前 10 分钟，把主动权拿回来。

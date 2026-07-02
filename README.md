@@ -8,15 +8,16 @@
 
 ## 当前版本
 
-**v0.5.0 Reactor Core**
+**v0.6.0 Tcp Echo Server**
 
-当前阶段完成基础设施模块和最小 Reactor 网络核心：
+当前阶段完成基础设施、Reactor 网络核心和最小 TCP Echo Server：
 
 - Logger：日志模块
 - ThreadPool：固定线程数线程池，支持 `std::future` 返回值
 - Buffer：可读 / 可写缓冲区，为后续网络层准备
 - Config：轻量级 `key=value` 配置读取器
 - Reactor Core：`Socket` / `Channel` / `EpollPoller` / `EventLoop`
+- Tcp Echo Server：`Acceptor` / `TcpConnection` / `TcpServer`
 
 ---
 
@@ -56,6 +57,7 @@ examples/
   buffer_demo.cpp
   config_demo.cpp
   reactor_demo.cpp
+  echo_server_demo.cpp
 
 config/
   server.conf
@@ -63,6 +65,7 @@ config/
 docs/
   PROJECT_INTERVIEW_GUIDE.md
   REACTOR_CORE_NOTES.md
+  TCP_ECHO_SERVER_NOTES.md
 ```
 
 ---
@@ -84,6 +87,7 @@ cmake --build build
 ./build/buffer_demo
 ./build/config_demo
 ./build/reactor_demo
+./build/echo_server_demo
 ```
 
 ---
@@ -102,6 +106,12 @@ Reactor Core 的逐文件代码阅读笔记维护在：
 
 ```text
 docs/REACTOR_CORE_NOTES.md
+```
+
+TCP Echo Server 的逐文件代码阅读笔记维护在：
+
+```text
+docs/TCP_ECHO_SERVER_NOTES.md
 ```
 
 ---
@@ -277,6 +287,41 @@ read/write/error/close callback
 
 ---
 
+### Tcp Echo Server
+
+Tcp Echo Server 在 Reactor Core 之上补齐最小 TCP 服务流程。
+
+当前支持：
+
+- `Acceptor`：管理 listen fd，监听新连接并调用 `accept`
+- `TcpConnection`：管理单个连接 fd，处理非阻塞读写、输入 Buffer、输出 Buffer 和关闭事件
+- `TcpServer`：组合 Acceptor 和活跃连接表
+- `echo_server_demo`：监听 `8080` 端口，收到什么就原样返回什么
+
+核心流程：
+
+```text
+listen fd 可读
+    ↓
+Acceptor::handle_read()
+    ↓
+accept() 得到连接 fd
+    ↓
+TcpServer 创建 TcpConnection
+    ↓
+连接 fd 可读
+    ↓
+TcpConnection::handle_read()
+    ↓
+Buffer 暂存数据
+    ↓
+message callback
+    ↓
+TcpConnection::send()
+```
+
+---
+
 ## 示例输出
 
 ### ThreadPool Demo
@@ -324,6 +369,18 @@ reactor tick 3
 reactor demo stopped
 ```
 
+### Echo Server Demo
+
+```text
+echo server listening on 0.0.0.0:8080
+```
+
+另开终端连接：
+
+```bash
+nc 127.0.0.1 8080
+```
+
 ---
 
 ## 版本路线
@@ -341,13 +398,13 @@ reactor demo stopped
   - Channel
   - EpollPoller
   - EventLoop
-
-### 计划中
-
 - v0.6.0：Tcp Echo Server
+  - Acceptor
   - TcpConnection
   - TcpServer
   - Echo demo
+
+### 计划中
 
 - v0.7.0：HTTP MVP
   - HTTPRequest
@@ -378,11 +435,11 @@ reactor demo stopped
 
 ## 当前阶段说明
 
-v0.5.0 的目标是在基础设施模块之上，完成后续 TCP 服务需要的最小事件驱动网络核心。
+v0.6.0 的目标是在 Reactor Core 之上，完成最小 TCP Echo Server。
 
-当前阶段暂不实现完整 TCP 连接管理，而是先保证 socket 封装、fd 事件抽象、epoll poller 和 event loop 可以独立运行、独立验证、独立讲清楚。
+当前阶段已经实现 listen socket、accept 新连接、活跃连接管理、非阻塞读写、输入输出 Buffer 和 Echo demo。
 
-后续进入 v0.6.0 后，将在 Reactor Core 之上实现 `TcpConnection`、`TcpServer` 和 Echo demo。
+后续进入 v0.7.0 后，将在 TCP 服务之上增加 HTTP 请求解析、响应生成和路由。
 
 ---
 
@@ -401,6 +458,8 @@ v0.5.0 的目标是在基础设施模块之上，完成后续 TCP 服务需要�
 - 配置文件解析
 - Linux `epoll` 事件驱动模型
 - Reactor 模式拆分：Socket / Channel / Poller / EventLoop
+- TCP 连接生命周期管理
+- 非阻塞读写与输入输出 Buffer
 - 面向后端服务框架的逐步演进能力
 
 ---
@@ -409,11 +468,12 @@ v0.5.0 的目标是在基础设施模块之上，完成后续 TCP 服务需要�
 
 下一阶段目标：
 
-**v0.6.0 Tcp Echo Server**
+**v0.7.0 HTTP MVP**
 
 重点实现：
 
-- TcpConnection
-- TcpServer
-- Acceptor
-- Echo demo
+- HTTPRequest
+- HTTPResponse
+- HTTPParser
+- Router
+- HTTPServer

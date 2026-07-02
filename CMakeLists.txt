@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(cpp_service_framework VERSION 0.5.0 LANGUAGES CXX)
+project(cpp_service_framework VERSION 0.6.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,6 +27,9 @@ add_library(cpp_service_framework
     src/net/channel.cpp
     src/net/epoll_poller.cpp
     src/net/event_loop.cpp
+    src/net/acceptor.cpp
+    src/net/tcp_connection.cpp
+    src/net/tcp_server.cpp
 )
 
 target_include_directories(cpp_service_framework
@@ -89,6 +92,15 @@ add_executable(reactor_demo
 )
 
 target_link_libraries(reactor_demo
+    PRIVATE
+        cpp_service_framework
+)
+
+add_executable(echo_server_demo
+    examples/echo_server_demo.cpp
+)
+
+target_link_libraries(echo_server_demo
     PRIVATE
         cpp_service_framework
 )
