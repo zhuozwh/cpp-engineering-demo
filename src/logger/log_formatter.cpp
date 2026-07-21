@@ -5,6 +5,8 @@
 #include <sstream>
 #include <string_view>
 
+#include "logger/log_level.h"
+
 namespace logger {
 
 namespace {
@@ -26,21 +28,6 @@ const char* extract_filename(const char* path) {
 
 }  // namespace
 
-const char* LogFormatter::level_to_string(LogLevel level) {
-    switch (level) {
-        case LogLevel::DEBUG:
-            return "DEBUG";
-        case LogLevel::INFO:
-            return "INFO";
-        case LogLevel::WARN:
-            return "WARN";
-        case LogLevel::ERROR:
-            return "ERROR";
-        default:
-            return "UNKNOWN";
-    }
-}
-
 std::string LogFormatter::format(const LogMessage& msg) const {
     std::ostringstream oss;
 
@@ -59,7 +46,7 @@ std::string LogFormatter::format(const LogMessage& msg) const {
         << "]";
 
     oss << "["
-        << level_to_string(msg.level)
+        << to_string(msg.level)
         << "]";
 
     oss << "[tid:"

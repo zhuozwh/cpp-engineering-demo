@@ -14,9 +14,6 @@ public:
     ~LogFormatter() = default;
 
     std::string format(const LogMessage& msg) const;
-
-private:
-    static const char* level_to_string(LogLevel level);
 };
 
 }  // namespace logger
