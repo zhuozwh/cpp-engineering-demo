@@ -14,7 +14,7 @@ FileSink::FileSink(const std::string& filename)
 void FileSink::write(const std::string& formatted_message) {
     // 文件写入也要加锁，否则多线程下容易交叉写乱
     std::lock_guard<std::mutex> lock(mutex_);
-    file_ << formatted_message << std::endl;
+    file_ << formatted_message << '\n';
     file_.flush(); // 确保日志及时写入文件，避免崩溃时丢失（缓冲区日志刷进去）
 }
 
