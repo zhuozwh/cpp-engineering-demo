@@ -14,6 +14,7 @@ constexpr int kPollTimeoutMs = 10000;
 EventLoop::EventLoop()
     : looping_(false),
       quit_(false),
+      // 记录创建线程，后续所有 Channel 操作都用它做线程归属检查。
       thread_id_(std::this_thread::get_id()),
       poller_() {}
 
@@ -34,9 +35,11 @@ void EventLoop::loop() {
     quit_.store(false);
 
     while (!quit_.load()) {
+        // active_channels_ 只描述当前一轮，必须在下一次 poll 前清空。
         active_channels_.clear();
         poller_.poll(kPollTimeoutMs, &active_channels_);
 
+        // EventLoop 只负责调度，具体事件类型由 Channel 再分发给业务对象。
         for (Channel* channel : active_channels_) {
             if (channel != nullptr) {
                 channel->handle_event();
@@ -48,6 +51,7 @@ void EventLoop::loop() {
 }
 
 void EventLoop::quit() {
+    // 当前没有 eventfd 唤醒机制；若此时 epoll_wait 正在阻塞，最迟超时后退出。
     quit_.store(true);
 }
 

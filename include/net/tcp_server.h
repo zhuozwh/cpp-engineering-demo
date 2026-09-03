@@ -11,6 +11,7 @@ namespace net {
 
 class EventLoop;
 
+// 组合 Acceptor 与 TcpConnection，负责接收连接并管理活跃连接生命周期。
 class TcpServer {
 public:
     using MessageCallback = TcpConnection::MessageCallback;
@@ -32,6 +33,7 @@ private:
     EventLoop* loop_;
     Acceptor acceptor_;
     MessageCallback message_callback_;
+    // 活跃连接表用于持有 TcpConnection，并不是复用外部连接的“连接池”。
     std::unordered_map<int, std::shared_ptr<TcpConnection>> connections_;
 };
 

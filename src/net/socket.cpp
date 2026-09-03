@@ -29,6 +29,7 @@ Socket::Socket(int fd) noexcept
     : fd_(fd) {}
 
 Socket::~Socket() {
+    // RAII：无论正常退出还是异常退出，都由对象负责回收 fd。
     close();
 }
 
@@ -37,12 +38,14 @@ Socket::Socket(Socket&& other) noexcept
 
 Socket& Socket::operator=(Socket&& other) noexcept {
     if (this != &other) {
+        // 先关闭自己原来持有的 fd，再接管 other 的 fd。
         reset(other.release());
     }
     return *this;
 }
 
 Socket Socket::create_tcp_nonblocking() {
+    // 创建时一次性设置 NONBLOCK 和 CLOEXEC，避免创建后再设置之间的竞态窗口。
     int fd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_TCP);
     if (fd < 0) {
         throw_errno("socket");
@@ -61,6 +64,7 @@ bool Socket::valid() const noexcept {
 
 int Socket::release() noexcept {
     int old_fd = fd_;
+    // 将自身置为无效，避免析构时把已经转移给其他对象的 fd 再关闭一次。
     fd_ = -1;
     return old_fd;
 }
@@ -101,11 +105,13 @@ Socket Socket::accept(sockaddr_in* peer_addr) const {
     sockaddr_in addr{};
     socklen_t addr_len = sizeof(addr);
 
+    // accept4 让新连接从创建开始就是非阻塞且不会泄漏到 exec 后的子进程。
     int conn_fd = ::accept4(fd_,
                            reinterpret_cast<sockaddr*>(&addr),
                            &addr_len,
                            SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (conn_fd < 0) {
+        // 这些错误表示本轮没有可交付的连接，交给上层结束 accept 循环。
         if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR ||
             errno == ECONNABORTED) {
             return Socket();
@@ -123,6 +129,7 @@ Socket Socket::accept(sockaddr_in* peer_addr) const {
 void Socket::set_reuse_addr(bool on) const {
     ensure_valid_fd(fd_, "setsockopt(SO_REUSEADDR)");
 
+    // 允许服务重启后复用仍处于 TIME_WAIT 相关状态的本地地址。
     int opt = on ? 1 : 0;
     if (::setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
         throw_errno("setsockopt(SO_REUSEADDR)");

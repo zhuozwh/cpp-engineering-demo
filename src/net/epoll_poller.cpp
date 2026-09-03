@@ -37,6 +37,7 @@ void EpollPoller::poll(int timeout_ms, std::vector<Channel*>* active_channels) {
         throw std::invalid_argument("active_channels must not be null");
     }
 
+    // events_ 只承接本轮内核返回的就绪事件，不保存长期注册状态。
     int event_count = ::epoll_wait(epoll_fd_,
                                    events_.data(),
                                    static_cast<int>(events_.size()),
@@ -50,12 +51,14 @@ void EpollPoller::poll(int timeout_ms, std::vector<Channel*>* active_channels) {
     }
 
     for (int i = 0; i < event_count; ++i) {
+        // 注册时把 Channel* 放进 data.ptr，这里无需再通过 fd 查表即可取回。
         auto* channel = static_cast<Channel*>(events_[i].data.ptr);
         channel->set_revents(events_[i].events);
         active_channels->push_back(channel);
     }
 
     if (event_count == static_cast<int>(events_.size())) {
+        // 结果数组被填满说明下一轮可能容纳不下，扩大容量以免分批唤醒。
         events_.resize(events_.size() * 2);
     }
 }
@@ -72,6 +75,7 @@ void EpollPoller::update_channel(Channel* channel) {
             return;
         }
 
+        // 首次关注事件：ADD，并同步维护用户态注册状态。
         update(EPOLL_CTL_ADD, channel);
         channels_[fd] = channel;
         channel->set_in_epoll(true);
@@ -79,10 +83,12 @@ void EpollPoller::update_channel(Channel* channel) {
     }
 
     if (channel->is_none_event()) {
+        // 不再关注任何事件时直接 DEL，避免保留无意义的 epoll 项。
         remove_channel(channel);
         return;
     }
 
+    // 已注册且仍有关注事件，只需修改事件掩码。
     update(EPOLL_CTL_MOD, channel);
 }
 
@@ -105,6 +111,7 @@ void EpollPoller::remove_channel(Channel* channel) {
 void EpollPoller::update(int operation, Channel* channel) {
     epoll_event event{};
     event.events = channel->events();
+    // epoll 只借用该指针；Channel 必须活到被移除之后。
     event.data.ptr = channel;
 
     if (::epoll_ctl(epoll_fd_, operation, channel->fd(), &event) < 0) {

@@ -11,6 +11,7 @@ namespace net {
 namespace {
 
 constexpr uint32_t kNoneEvent = 0;
+// EPOLLPRI 表示带外或高优先级数据，也归入“可读”事件处理。
 constexpr uint32_t kReadEvent = EPOLLIN | EPOLLPRI;
 constexpr uint32_t kWriteEvent = EPOLLOUT;
 
@@ -33,6 +34,7 @@ Channel::Channel(EventLoop* loop, int fd)
 Channel::~Channel() = default;
 
 void Channel::handle_event() {
+    // 只有 HUP、没有可读数据时直接按关闭处理；若仍可读，要先让上层取完数据。
     if ((revents_ & EPOLLHUP) && !(revents_ & EPOLLIN)) {
         if (close_callback_) {
             close_callback_();
@@ -40,12 +42,14 @@ void Channel::handle_event() {
         return;
     }
 
+    // 同一轮可能同时出现多个事件，因此除纯 HUP 外不提前返回。
     if (revents_ & EPOLLERR) {
         if (error_callback_) {
             error_callback_();
         }
     }
 
+    // EPOLLRDHUP 表示对端关闭了写方向，read 会读完剩余数据后返回 0。
     if (revents_ & (EPOLLIN | EPOLLPRI | EPOLLRDHUP)) {
         if (read_callback_) {
             read_callback_();
@@ -105,6 +109,7 @@ void Channel::enable_reading() {
 }
 
 void Channel::enable_writing() {
+    // 仅在确实存在待发送数据时监听 EPOLLOUT，否则可写事件会持续触发。
     events_ |= kWriteEvent;
     update();
 }
@@ -116,6 +121,7 @@ void Channel::disable_writing() {
 
 void Channel::disable_all() {
     events_ = kNoneEvent;
+    // Poller 会把无关注事件的 Channel 从 epoll 中删除。
     update();
 }
 

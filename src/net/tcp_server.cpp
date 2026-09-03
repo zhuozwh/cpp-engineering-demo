@@ -16,6 +16,7 @@ TcpServer::TcpServer(EventLoop* loop, uint16_t port)
 
     acceptor_.set_new_connection_callback(
         [this](Socket socket, const sockaddr_in& peer_addr) {
+            // Acceptor 只负责 accept，连接对象的创建和生命周期交给 TcpServer。
             handle_new_connection(std::move(socket), peer_addr);
         });
 }
@@ -44,12 +45,14 @@ void TcpServer::handle_new_connection(Socket socket, const sockaddr_in& peer_add
         remove_connection(closed_fd);
     });
 
+    // 先放入活跃连接表持有 shared_ptr，再注册事件，保证回调触发时对象仍存在。
     connections_[fd] = connection;
     connection->connect_established();
 }
 
 void TcpServer::remove_connection(int fd) {
     loop_->assert_in_loop_thread();
+    // erase 释放 Server 持有的 shared_ptr；无其他引用时连接对象随即析构并关闭 fd。
     connections_.erase(fd);
 }
 
