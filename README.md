@@ -8,7 +8,7 @@
 
 ## 当前版本
 
-**v0.6.0 Tcp Echo Server**
+**v0.6.1 Tcp Echo Server 可读性维护版**
 
 当前阶段完成基础设施、Reactor 网络核心和最小 TCP Echo Server：
 
@@ -403,6 +403,10 @@ nc 127.0.0.1 8080
   - TcpConnection
   - TcpServer
   - Echo demo
+- v0.6.1：可读性维护
+  - 补充 Reactor Core 与 Tcp Server 的关键中文注释
+  - 明确 fd 所有权、线程约束、事件分发和非阻塞 I/O 流程
+  - 增加仓库代码注释维护约定
 
 ### 计划中
 
@@ -435,7 +439,7 @@ nc 127.0.0.1 8080
 
 ## 当前阶段说明
 
-v0.6.0 的目标是在 Reactor Core 之上，完成最小 TCP Echo Server。
+v0.6.1 在 v0.6.0 Tcp Echo Server 的功能基础上，重点完善网络模块的关键中文注释和维护约定。
 
 当前阶段已经实现 listen socket、accept 新连接、活跃连接管理、非阻塞读写、输入输出 Buffer 和 Echo demo。
 
